@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La Salle des Archives — Escape Room algébrique</title>
+  <style>
+    :root {
+      --bg-1: #0b1220;
+      --bg-2: #0f172a;
+      --wall: #1b2740;
+      --wall-2: #24314d;
+      --floor: #2a2530;
+      --text: #edf3ff;
+      --muted: #9bb0d5;
+      --cyan: #78e6ff;
+      --green: #69f0ae;
+      --red: #ff6b7a;
+      --gold: #ffd166;
+      --panel: rgba(18, 27, 46, 0.92);
+      --line: rgba(255, 255, 255, 0.12);
+      --shadow: 0 18px 40px rgba(0,0,0,.38);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(120,230,255,.08), transparent 18%),
+        radial-gradient(circle at 85% 18%, rgba(255,107,122,.06), transparent 16%),
+        linear-gradient(180deg, var(--bg-1), var(--bg-2));
+      overflow: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 24px 24px;
+      mask-image: radial-gradient(circle at center, black 48%, transparent 95%);
+      opacity: .35;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      animation: fade .25s ease;
+    }
+
+    .screen.active { display: flex; }
+
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .panel {
+      width: min(1100px, 100%);
+      background: linear-gradient(180deg, rgba(24,36,61,.96), rgba(16,25,43,.96));
+      border: 1px solid rgba(120,230,255,.18);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent, rgba(255,255,255,.025), transparent);
+      pointer-events: none;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      font-size: clamp(2rem, 5vw, 4rem);
+      line-height: 1;
+      letter-spacing: .03em;
+      margin-bottom: 12px;
+    }
+    h2 { font-size: clamp(1.3rem, 2vw, 2rem); }
+    .muted { color: var(--muted); }
+    .small { font-size: .95rem; }
+    .center { text-align: center; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .vault-card {
+      min-height: 320px;
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(120,230,255,.18), transparent 24%),
+        linear-gradient(180deg, rgba(120,230,255,.08), rgba(105,240,174,.04));
+      border: 1px solid rgba(120,230,255,.2);
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+
+    .vault {
+      width: 220px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 12px solid #415882;
+      background: radial-gradient(circle at 35% 30%, #314669, #1d2b47 65%);
+      box-shadow: 0 0 0 6px rgba(120,230,255,.08), 0 0 38px rgba(120,230,255,.12);
+      position: relative;
+    }
+    .vault::before {
+      content: "";
+      position: absolute;
+      inset: 24px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.14);
+    }
+    .vault::after {
+      content: "";
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 90px; height: 90px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #9cf0ff, #69f0ae);
+      box-shadow: 0 0 32px rgba(105,240,174,.4);
+    }
+    .wheel {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 1;
+      font-size: 60px;
+      color: #04252d;
+      font-weight: 900;
+    }
+
+    .actions, .top-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 13px 18px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .15s ease, opacity .15s ease, box-shadow .15s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--cyan), var(--green));
+      color: #082731;
+      box-shadow: 0 10px 24px rgba(120,230,255,.2);
+    }
+    .btn-secondary {
+      background: #273757;
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .btn-danger {
+      background: rgba(255,107,122,.14);
+      color: #ffd6dc;
+      border: 1px solid rgba(255,107,122,.36);
+    }
+
+    .rules-list {
+      margin: 0;
+      padding-left: 1.2rem;
+      line-height: 1.8;
+    }
+
+    .hud {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: stretch;
+    }
+
+    .hud-box {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      padding: 14px 16px;
+      min-height: 84px;
+    }
+    .hud-label {
+      font-size: .8rem;
+      color: var(--muted);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .hud-value {
+      font-size: 1.32rem;
+      font-weight: 900;
+    }
+    .code-track {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .code-slot {
+      width: 42px;
+      height: 46px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.04);
+      border: 1px dashed rgba(255,255,255,.16);
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: var(--gold);
+    }
+
+    .room {
+      position: relative;
+      height: min(74vh, 680px);
+      min-height: 560px;
+      border-radius: 24px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, #1e2b46 0 68%, #2d2735 68% 100%);
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 -24px 60px rgba(0,0,0,.22);
+    }
+
+    .room::before {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: 31%;
+      height: 3px;
+      background: rgba(255,255,255,.06);
+    }
+
+    .object {
+      position: absolute;
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 12px 24px rgba(0,0,0,.25);
+      cursor: pointer;
+      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+      user-select: none;
+    }
+    .object:hover {
+      transform: translateY(-2px);
+      border-color: rgba(120,230,255,.35);
+      box-shadow: 0 14px 28px rgba(0,0,0,.3), 0 0 0 1px rgba(120,230,255,.12);
+    }
+    .object.solved {
+      border-color: rgba(105,240,174,.5);
+      box-shadow: 0 0 0 1px rgba(105,240,174,.18), 0 0 28px rgba(105,240,174,.11), 0 14px 28px rgba(0,0,0,.3);
+    }
+    .object-label {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: -34px;
+      font-size: .88rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .status-led {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.15);
+      box-shadow: 0 0 0 4px rgba(255,255,255,.02);
+    }
+    .object.solved .status-led {
+      background: var(--green);
+      box-shadow: 0 0 16px rgba(105,240,174,.8);
+    }
+
+    .door {
+      position: absolute;
+      left: 50%;
+      top: 13%;
+      transform: translateX(-50%);
+      width: 240px;
+      height: 360px;
+      border-radius: 18px 18px 8px 8px;
+      border: 8px solid #465779;
+      background: linear-gradient(180deg, #324663, #263651 55%, #1d2c47);
+      box-shadow: 0 20px 44px rgba(0,0,0,.35);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .door.locked:hover { box-shadow: 0 20px 44px rgba(0,0,0,.35), 0 0 0 1px rgba(255,209,102,.1); }
+    .door-panel {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      transition: transform .8s ease;
+      border-right: 2px solid rgba(255,255,255,.08);
+    }
+    .door-panel.right {
+      right: 0;
+      border-right: 0;
+      border-left: 2px solid rgba(255,255,255,.08);
+    }
+    .door.open .door-panel.left { transform: translateX(-104%); }
+    .door.open .door-panel.right { transform: translateX(104%); }
+    .door-top-sign {
+      position: absolute;
+      top: 14px;
+      left: 50%; transform: translateX(-50%);
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255,107,122,.12);
+      border: 1px solid rgba(255,107,122,.32);
+      color: #ffdbe0;
+      font-size: .84rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      z-index: 3;
+    }
+    .door.ready .door-top-sign {
+      background: rgba(105,240,174,.12);
+      border-color: rgba(105,240,174,.34);
+      color: #ddffec;
+    }
+    .door-core {
+      position: absolute;
+      left: 50%; top: 58%; transform: translate(-50%, -50%);
+      width: 104px; height: 104px;
+      border-radius: 50%;
+      border: 8px solid #607599;
+      z-index: 2;
+      background: radial-gradient(circle at 35% 30%, #7188af, #4c607f);
+      box-shadow: 0 0 0 5px rgba(255,255,255,.05);
+    }
+    .door-handle {
+      position: absolute;
+      left: 50%; top: 58%; transform: translate(-50%, -50%);
+      z-index: 3;
+      font-size: 44px;
+      color: #dfe9f8;
+      text-shadow: 0 2px 0 rgba(0,0,0,.2);
+    }
+    .door-instruction {
+      position: absolute;
+      left: 50%; bottom: 18px; transform: translateX(-50%);
+      z-index: 3;
+      width: 82%;
+      text-align: center;
+      font-size: .92rem;
+      color: var(--muted);
+    }
+
+    .desk {
+      left: 7%; bottom: 8%; width: 240px; height: 112px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #6d4d34, #51361f);
+    }
+    .desk::before {
+      content: "";
+      position: absolute;
+      left: 16px; right: 16px; top: 24px;
+      height: 52px;
+      border-radius: 8px;
+      background: rgba(0,0,0,.14);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.06);
+    }
+
+    .terminal {
+      left: 8%; top: 10%; width: 220px; height: 128px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #24395c, #1a2740);
+    }
+    .terminal::before {
+      content: "";
+      position: absolute;
+      inset: 12px 12px 26px;
+      border-radius: 10px;
+      background: radial-gradient(circle at 50% 50%, rgba(120,230,255,.18), rgba(120,230,255,.05)), #072a31;
+      box-shadow: inset 0 0 30px rgba(105,240,174,.08);
+    }
+
+    .locker {
+      right: 8%; top: 16%; width: 140px; height: 230px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #54637a, #364355);
+    }
+    .locker::before, .locker::after {
+      content: "";
+      position: absolute;
+      left: 14px; right: 14px;
+      height: 2px;
+      background: rgba(255,255,255,.12);
+    }
+    .locker::before { top: 64px; }
+    .locker::after { top: 128px; }
+
+    .fusebox {
+      left: 31%; top: 14%; width: 110px; height: 150px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #666f81, #414a5b);
+    }
+    .fusebox::before {
+      content: "";
+      position: absolute;
+      inset: 16px;
+      border-radius: 8px;
+      border: 2px solid rgba(255,255,255,.12);
+      background: repeating-linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.04) 8px, transparent 8px, transparent 16px);
+    }
+
+    .vent {
+      right: 26%; top: 12%; width: 160px; height: 84px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #677487, #495468);
+    }
+    .vent::before {
+      content: "";
+      position: absolute;
+      inset: 14px;
+      background: repeating-linear-gradient(180deg, rgba(0,0,0,.3), rgba(0,0,0,.3) 3px, rgba(255,255,255,.1) 3px, rgba(255,255,255,.1) 10px);
+      border-radius: 6px;
+    }
+
+    .console {
+      right: 15%; bottom: 11%; width: 230px; height: 120px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #25395a, #1a2740);
+    }
+    .console::before {
+      content: "";
+      position: absolute;
+      inset: 14px 18px 42px;
+      border-radius: 10px;
+      background: radial-gradient(circle at 35% 35%, rgba(120,230,255,.18), rgba(120,230,255,.04)), #0b2534;
+    }
+
+    .popup-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(4,8,16,.65);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 20;
+    }
+    .popup-backdrop.active { display: flex; }
+
+    .popup {
+      width: min(740px, 100%);
+      background: linear-gradient(180deg, rgba(23,34,58,.98), rgba(14,23,40,.98));
+      border: 1px solid rgba(120,230,255,.18);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+      position: relative;
+    }
+    .popup-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .close-btn {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      font-size: 1.2rem;
+    }
+
+    .equation-box, .hint-box, .feedback-box {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .equation-box { text-align: center; }
+    .equation {
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      line-height: 1.35;
+      color: #ffffff;
+      word-break: break-word;
+    }
+
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      vertical-align: middle;
+      line-height: 1;
+      margin: 0 .08em;
+      min-width: 1.4em;
+    }
+    .frac .top, .frac .bottom { padding: 0 .12em; }
+    .frac .bar { width: 100%; border-top: 2px solid currentColor; margin: .08em 0; }
+
+    .answer-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      margin-top: 12px;
+    }
+    .x-label {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--gold);
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      font-size: 1.05rem;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: rgba(120,230,255,.4);
+      box-shadow: 0 0 0 3px rgba(120,230,255,.10);
+    }
+    .feedback-box { min-height: 62px; }
+    .feedback-success { color: #dcffe6; }
+    .feedback-error { color: #ffd8dd; }
+    .shake { animation: shake .26s ease; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      50% { transform: translateX(6px); }
+      75% { transform: translateX(-4px); }
+    }
+
+    .final-screen-box {
+      max-width: 720px;
+      text-align: center;
+    }
+    .final-door {
+      margin: 0 auto 22px;
+      width: 200px;
+      height: 260px;
+      border-radius: 18px 18px 8px 8px;
+      background: linear-gradient(180deg, #314a6e, #20314f);
+      border: 8px solid #516887;
+      position: relative;
+      box-shadow: 0 24px 50px rgba(0,0,0,.38), 0 0 34px rgba(105,240,174,.16);
+    }
+    .final-door::before, .final-door::after {
+      content: "";
+      position: absolute;
+      top: 0; bottom: 0; width: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    }
+    .final-door::before { left: -52%; transform: skewY(0deg); }
+    .final-door::after { right: -52%; transform: skewY(0deg); }
+    .success-banner {
+      display: inline-block;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(105,240,174,.12);
+      color: #ddffec;
+      border: 1px solid rgba(105,240,174,.3);
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 960px) {
+      .hero { grid-template-columns: 1fr; }
+      .hud { grid-template-columns: 1fr; }
+      .room { height: auto; min-height: 720px; }
+      .answer-row { grid-template-columns: auto 1fr; }
+      .answer-row button { grid-column: span 2; }
+    }
+
+    @media (max-width: 760px) {
+      body { overflow: auto; }
+      .app, .screen { position: static; min-height: 100vh; }
+      .room { min-height: 960px; }
+      .door { left: 50%; top: 32%; width: 210px; height: 320px; }
+      .terminal { left: 5%; top: 8%; width: 180px; }
+      .fusebox { left: 40%; top: 10%; }
+      .vent { right: 6%; top: 10%; width: 130px; }
+      .locker { right: 8%; top: 48%; width: 120px; height: 210px; }
+      .desk { left: 6%; bottom: 16%; width: 210px; }
+      .console { left: 50%; transform: translateX(-50%); right: auto; bottom: 7%; width: 220px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="screen active" id="startScreen">
+    <div class="panel">
+      <div class="hero">
+        <div>
+          <p class="muted small">Escape Room algébrique</p>
+          <h1>La Salle des Archives</h1>
+          <p class="muted" style="font-size:1.08rem; line-height:1.8; max-width: 64ch;">
+            Vous êtes enfermés dans une salle d’archives secrète. Six mécanismes bloquent encore la sortie. Cliquez sur les objets de la salle, résolvez les équations et activez tous les systèmes pour ouvrir la porte.
+          </p>
+          <div class="actions" style="margin-top:22px;">
+            <button class="btn-primary" id="startBtn">Entrer dans la salle</button>
+            <button class="btn-secondary" id="rulesBtn">Règles</button>
+          </div>
+        </div>
+        <div class="vault-card">
+          <div class="vault"><div class="wheel">✦</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="rulesScreen">
+    <div class="panel">
+      <h2>Règles de la mission</h2>
+      <ul class="rules-list muted">
+        <li>Clique sur un objet de la salle pour découvrir l’équation cachée.</li>
+        <li>Entre la valeur de <strong>x</strong>. Tu peux écrire un entier, une fraction comme <strong>4/3</strong> ou un nombre décimal.</li>
+        <li>Chaque bonne réponse active un système de sécurité.</li>
+        <li>Quand les <strong>6 systèmes</strong> sont activés, la porte s’ouvre.</li>
+        <li>Le bouton <strong>Indice</strong> donne un conseil simple si tu bloques.</li>
+      </ul>
+      <div class="top-actions" style="margin-top:24px;">
+        <button class="btn-secondary" id="backFromRules">Retour</button>
+        <button class="btn-primary" id="playFromRules">Jouer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="gameScreen">
+    <div class="panel">
+      <div class="hud">
+        <div class="hud-box">
+          <div class="hud-label">Progression</div>
+          <div class="hud-value"><span id="progressValue">0</span> / 6 systèmes activés</div>
+          <div class="code-track" id="codeTrack"></div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-label">Temps</div>
+          <div class="hud-value" id="timerValue">00:00</div>
+        </div>
+        <div class="hud-box">
+          <div class="hud-label">Sortie</div>
+          <div class="hud-value" id="doorStatusText">Verrouillée</div>
+        </div>
+      </div>
+
+      <div class="room">
+        <div class="object terminal" data-id="1" title="Terminal mural">
+          <div class="status-led"></div>
+          <div class="object-label">Terminal mural</div>
+        </div>
+
+        <div class="object fusebox" data-id="2" title="Boîtier électrique">
+          <div class="status-led"></div>
+          <div class="object-label">Boîtier électrique</div>
+        </div>
+
+        <div class="object vent" data-id="3" title="Grille de ventilation">
+          <div class="status-led"></div>
+          <div class="object-label">Grille de ventilation</div>
+        </div>
+
+        <div class="door locked" id="mainDoor" title="Porte de sortie">
+          <div class="door-top-sign" id="doorSign">Verrouillée</div>
+          <div class="door-panel left"></div>
+          <div class="door-panel right"></div>
+          <div class="door-core"></div>
+          <div class="door-handle">✦</div>
+          <div class="door-instruction" id="doorInstruction">Active tous les systèmes puis clique sur la porte.</div>
+        </div>
+
+        <div class="object desk" data-id="4" title="Bureau ancien">
+          <div class="status-led"></div>
+          <div class="object-label">Bureau ancien</div>
+        </div>
+
+        <div class="object locker" data-id="5" title="Casier métallique">
+          <div class="status-led"></div>
+          <div class="object-label">Casier métallique</div>
+        </div>
+
+        <div class="object console" data-id="6" title="Console de sortie">
+          <div class="status-led"></div>
+          <div class="object-label">Console de sortie</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="popup-backdrop" id="popupBackdrop">
+      <div class="popup">
+        <div class="popup-head">
+          <div>
+            <p class="muted small" id="popupCategory">Système de sécurité</p>
+            <h2 id="popupTitle">Objet</h2>
+            <p class="muted" id="popupText" style="margin-bottom:0;"></p>
+          </div>
+          <button class="btn-secondary close-btn" id="closePopup" aria-label="Fermer">✕</button>
+        </div>
+
+        <div class="equation-box">
+          <div class="equation" id="equationDisplay"></div>
+        </div>
+
+        <div class="answer-row">
+          <div class="x-label">x =</div>
+          <input type="text" id="answerInput" placeholder="Exemple : -12, 4/3, -25/4" />
+          <button class="btn-primary" id="validateBtn">Valider</button>
+          <button class="btn-secondary" id="hintBtn">Indice</button>
+        </div>
+
+        <div class="hint-box hidden" id="hintBox"></div>
+        <div class="feedback-box muted" id="feedbackBox">Clique sur <strong>Valider</strong> après avoir entré ta réponse.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="finalScreen">
+    <div class="panel final-screen-box">
+      <div class="success-banner">Mission accomplie</div>
+      <div class="final-door"></div>
+      <h2>La porte s’est ouverte.</h2>
+      <p class="muted" style="font-size:1.08rem; line-height:1.8; max-width: 56ch; margin: 0 auto 20px;">
+        Tous les systèmes ont été réactivés. Vous avez quitté la Salle des Archives.
+      </p>
+      <p><strong>Temps final :</strong> <span id="finalTime">00:00</span></p>
+      <div class="actions" style="justify-content:center; margin-top: 18px;">
+        <button class="btn-primary" id="restartBtn">Rejouer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const puzzles = [
+      {
+        id: 1,
+        object: "Terminal mural",
+        text: "Le terminal demande une valeur de calibration pour réactiver l’écran de contrôle.",
+        equation: () => `${frac('x','2')} − 2 = ${frac('3x','4')} + 1`,
+        answer: -12,
+        hint1: "Cherche un dénominateur commun entre 2 et 4.",
+        hint2: "Multiplie toute l’équation par 4."
+      },
+      {
+        id: 2,
+        object: "Boîtier électrique",
+        text: "Le boîtier coupe le courant. Il faut entrer la bonne valeur pour rétablir l’alimentation.",
+        equation: () => `${frac('1','3')} ( x + ${frac('4','3')} ) = 3x − ${frac('28','9')}`,
+        answer: 4/3,
+        hint1: "Commence par te débarrasser du coefficient 1/3.",
+        hint2: "Multiplie les deux membres par 3, puis regroupe les termes en x."
+      },
+      {
+        id: 3,
+        object: "Grille de ventilation",
+        text: "Un ancien mécanisme bloque la ventilation. Résous l’équation pour déverrouiller la trappe.",
+        equation: () => `${frac('x','2')} + ${frac('1','4')} = ${frac('2x','5')} − ${frac('3','8')}`,
+        answer: -25/4,
+        hint1: "Cherche un dénominateur commun entre 2, 4, 5 et 8.",
+        hint2: "Multiplie toute l’équation par 40."
+      },
+      {
+        id: 4,
+        object: "Bureau ancien",
+        text: "Un tiroir secret du bureau ne s’ouvre que si la valeur de x est correcte.",
+        equation: () => `${frac('2x','3')} + ${frac('1','5')} = −${frac('1','10')} − x`,
+        answer: -9/50,
+        hint1: "Cherche un dénominateur commun entre 3, 5 et 10.",
+        hint2: "Multiplie toute l’équation par 30."
+      },
+      {
+        id: 5,
+        object: "Casier métallique",
+        text: "Le casier a un verrou numérique. Une seule valeur permet l’ouverture.",
+        equation: () => `−${frac('5x','2')} − ${frac('1','9')} = ${frac('7','6')} + ${frac('x','3')}`,
+        answer: -23/51,
+        hint1: "Cherche un dénominateur commun entre 2, 9, 6 et 3.",
+        hint2: "Multiplie toute l’équation par 18."
+      },
+      {
+        id: 6,
+        object: "Console de sortie",
+        text: "Dernière vérification du système : la console attend la bonne valeur avant d’autoriser l’ouverture.",
+        equation: () => `${frac('1','2')}(x + 4) − ${frac('1','3')}(−x + 9) = −${frac('1','6')}x`,
+        answer: 1,
+        hint1: "Développe d’abord les parenthèses.",
+        hint2: "Regroupe ensuite les termes en x d’un côté et les nombres de l’autre."
+      }
+    ];
+
+    const state = {
+      solved: new Set(),
+      hintLevel: {},
+      currentPuzzle: null,
+      startTime: null,
+      timerInterval: null
+    };
+
+    const startScreen = document.getElementById('startScreen');
+    const rulesScreen = document.getElementById('rulesScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const finalScreen = document.getElementById('finalScreen');
+    const popupBackdrop = document.getElementById('popupBackdrop');
+    const popupTitle = document.getElementById('popupTitle');
+    const popupText = document.getElementById('popupText');
+    const equationDisplay = document.getElementById('equationDisplay');
+    const answerInput = document.getElementById('answerInput');
+    const feedbackBox = document.getElementById('feedbackBox');
+    const hintBox = document.getElementById('hintBox');
+    const timerValue = document.getElementById('timerValue');
+    const finalTime = document.getElementById('finalTime');
+    const progressValue = document.getElementById('progressValue');
+    const codeTrack = document.getElementById('codeTrack');
+    const doorStatusText = document.getElementById('doorStatusText');
+    const mainDoor = document.getElementById('mainDoor');
+    const doorSign = document.getElementById('doorSign');
+    const doorInstruction = document.getElementById('doorInstruction');
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('rulesBtn').addEventListener('click', () => switchScreen(rulesScreen));
+    document.getElementById('backFromRules').addEventListener('click', () => switchScreen(startScreen));
+    document.getElementById('playFromRules').addEventListener('click', startGame);
+    document.getElementById('closePopup').addEventListener('click', closePuzzle);
+    document.getElementById('validateBtn').addEventListener('click', validateAnswer);
+    document.getElementById('hintBtn').addEventListener('click', showHint);
+    document.getElementById('restartBtn').addEventListener('click', resetGame);
+    answerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') validateAnswer();
+    });
+
+    document.querySelectorAll('.object').forEach(obj => {
+      obj.addEventListener('click', () => openPuzzle(Number(obj.dataset.id)));
+    });
+
+    mainDoor.addEventListener('click', () => {
+      if (state.solved.size < puzzles.length) {
+        feedbackDoor('La porte est encore verrouillée. Active d’abord les 6 systèmes.');
+      } else {
+        unlockDoor();
+      }
+    });
+
+    function startGame() {
+      switchScreen(gameScreen);
+      if (!state.startTime) {
+        state.startTime = Date.now();
+        state.timerInterval = setInterval(updateTimer, 1000);
+        updateTimer();
+      }
+      renderCodeTrack();
+      updateProgress();
+    }
+
+    function switchScreen(screen) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      screen.classList.add('active');
+    }
+
+    function renderCodeTrack() {
+      codeTrack.innerHTML = '';
+      for (let i = 0; i < puzzles.length; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'code-slot';
+        slot.textContent = state.solved.has(i + 1) ? '✓' : '•';
+        codeTrack.appendChild(slot);
+      }
+    }
+
+    function updateProgress() {
+      progressValue.textContent = state.solved.size;
+      renderCodeTrack();
+      const ready = state.solved.size === puzzles.length;
+      doorStatusText.textContent = ready ? 'Prête' : 'Verrouillée';
+      doorSign.textContent = ready ? 'Prête' : 'Verrouillée';
+      mainDoor.classList.toggle('ready', ready);
+      doorInstruction.textContent = ready
+        ? 'Tous les systèmes sont actifs. Clique sur la porte pour sortir.'
+        : 'Active tous les systèmes puis clique sur la porte.';
+    }
+
+    function openPuzzle(id) {
+      const puzzle = puzzles.find(p => p.id === id);
+      if (!puzzle) return;
+      state.currentPuzzle = puzzle;
+      popupTitle.textContent = puzzle.object;
+      popupText.textContent = puzzle.text;
+      equationDisplay.innerHTML = puzzle.equation();
+      answerInput.value = '';
+      answerInput.classList.remove('shake');
+      hintBox.classList.add('hidden');
+      hintBox.textContent = '';
+
+      if (state.solved.has(id)) {
+        feedbackBox.innerHTML = `<span class="feedback-success"><strong>Système déjà activé.</strong> Tu peux fermer cette fenêtre et continuer.</span>`;
+      } else {
+        feedbackBox.innerHTML = 'Entre la valeur de <strong>x</strong>, puis clique sur <strong>Valider</strong>.';
+      }
+
+      popupBackdrop.classList.add('active');
+      setTimeout(() => answerInput.focus(), 80);
+    }
+
+    function closePuzzle() {
+      popupBackdrop.classList.remove('active');
+      state.currentPuzzle = null;
+    }
+
+    function showHint() {
+      const puzzle = state.currentPuzzle;
+      if (!puzzle) return;
+      const current = state.hintLevel[puzzle.id] || 0;
+      const next = Math.min(current + 1, 2);
+      state.hintLevel[puzzle.id] = next;
+      hintBox.classList.remove('hidden');
+      hintBox.textContent = next === 1 ? puzzle.hint1 : puzzle.hint2;
+    }
+
+    function validateAnswer() {
+      const puzzle = state.currentPuzzle;
+      if (!puzzle || state.solved.has(puzzle.id)) return;
+      const value = parseAnswer(answerInput.value);
+      if (!Number.isFinite(value)) {
+        feedbackBox.innerHTML = `<span class="feedback-error"><strong>Entrée invalide.</strong> Écris un entier, une fraction comme 4/3 ou un décimal.</span>`;
+        answerInput.classList.remove('shake');
+        void answerInput.offsetWidth;
+        answerInput.classList.add('shake');
+        return;
+      }
+
+      if (Math.abs(value - puzzle.answer) < 1e-9) {
+        state.solved.add(puzzle.id);
+        document.querySelector(`.object[data-id="${puzzle.id}"]`).classList.add('solved');
+        feedbackBox.innerHTML = `<span class="feedback-success"><strong>Bonne réponse.</strong> Le système est maintenant activé.</span>`;
+        updateProgress();
+        setTimeout(closePuzzle, 850);
+      } else {
+        feedbackBox.innerHTML = `<span class="feedback-error"><strong>Réponse incorrecte.</strong> Essaie encore ou demande un indice.</span>`;
+        answerInput.classList.remove('shake');
+        void answerInput.offsetWidth;
+        answerInput.classList.add('shake');
+      }
+    }
+
+    function parseAnswer(raw) {
+      if (!raw) return NaN;
+      const txt = raw.trim().replace(/,/g, '.').replace(/\s+/g, '');
+      if (!txt) return NaN;
+      if (/^[+-]?\d+(?:\.\d+)?$/.test(txt)) return Number(txt);
+      if (/^[+-]?\d+(?:\.\d+)?\/[+-]?\d+(?:\.\d+)?$/.test(txt)) {
+        const [a, b] = txt.split('/').map(Number);
+        if (b === 0) return NaN;
+        return a / b;
+      }
+      return NaN;
+    }
+
+    function updateTimer() {
+      if (!state.startTime) return;
+      const seconds = Math.floor((Date.now() - state.startTime) / 1000);
+      const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const ss = String(seconds % 60).padStart(2, '0');
+      timerValue.textContent = `${mm}:${ss}`;
+    }
+
+    function feedbackDoor(message) {
+      doorInstruction.textContent = message;
+      mainDoor.classList.remove('shake');
+      void mainDoor.offsetWidth;
+      mainDoor.classList.add('shake');
+      setTimeout(() => updateProgress(), 1400);
+    }
+
+    function unlockDoor() {
+      mainDoor.classList.add('open');
+      doorInstruction.textContent = 'Accès autorisé.';
+      setTimeout(() => {
+        finalTime.textContent = timerValue.textContent;
+        switchScreen(finalScreen);
+        clearInterval(state.timerInterval);
+      }, 1000);
+    }
+
+    function resetGame() {
+      clearInterval(state.timerInterval);
+      state.solved = new Set();
+      state.hintLevel = {};
+      state.currentPuzzle = null;
+      state.startTime = null;
+      state.timerInterval = null;
+      document.querySelectorAll('.object').forEach(o => o.classList.remove('solved'));
+      popupBackdrop.classList.remove('active');
+      mainDoor.classList.remove('open', 'ready');
+      switchScreen(startScreen);
+      timerValue.textContent = '00:00';
+      finalTime.textContent = '00:00';
+      updateProgress();
+      renderCodeTrack();
+    }
+
+    function frac(top, bottom) {
+      return `<span class="frac"><span class="top">${top}</span><span class="bar"></span><span class="bottom">${bottom}</span></span>`;
+    }
+
+    renderCodeTrack();
+    updateProgress();
+  </script>
+</body>
+</html>
